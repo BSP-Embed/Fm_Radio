@@ -1,20 +1,3 @@
-/***********************************************************************************/
-/* This Application for FM Radio With Internet Clock                               */
-/* written by Prashanth from BSP Embed.                                            */   
-/* This code is availbale from GitHub.                                             */ 
-/* Demo is available on YouTube BSP Embed                                          */
-/* This is an example for our Monochrome OLEDs based on SSD1306 drivers            */
-/*  Pick one up today in the adafruit shop!                                        */ 
-/*  ------> http://www.adafruit.com/category/63_98                                 */
-/* This example is for a 128x64 size display using I2C to communicate              */
-/* 3 pins are required to interface (2 I2C and one reset)                          */
-/* Adafruit invests time and resources providing this open source code,            */
-/* please support Adafruit and open-source hardware by purchasing                  */
-/* products from Adafruit!                                                         */
-/* Written by Limor Fried/Ladyada for Adafruit Industries.                         */
-/* BSD license, check license.txt for more information                             */
-/* All text above, and the splash screen must be included in any redistribution    */ 
-/************************************************************************************/
 #include <Wire.h>
 #include <EEPROM.h>
 #include <Encoder.h>
@@ -23,95 +6,95 @@
 #include <ESP8266WiFi.h>
 #include <WiFiUdp.h>
 
-#define F_MIN                 88UL        /* in MHz */    
-#define F_MAX                 108UL
-#define STEP_SIZE             0.1         /* in MHz */
-#define FREQ_MODE             0
-#define CHAN_MODE             1
-#define MAGIC_NO              96          /* For EEPROM Detection */
-#define MAGIC_ADD             0           /* EEPROM ADDRESS */
-#define MODE_ADD              1
-#define CHAN_FREQ_BASE        2
-#define NO_CHANNELS           10 + 1      /* Channels + VFO */
-#define ERROR_PRESS           0
-#define SHORT_PRESS           1
-#define MEDIUM_PRESS          2
-#define TRUE                  1
-#define FALSE                 0
-#define S_PRESS_TIME          500         /* in milli seconds */
-#define M_PRESS_TIME          1500
-#define DLY_SEC               1000        /* Display Hold for Info*/
-#define TZ_HR                 5           /* +5.30 INDIAN Time Zone */
-#define TZ_MIN                30  
-#define TIME_ZONE             (TZ_HR * 60 * 60) + (TZ_MIN * 60)
-#define OLED_RESET            4
-#define SSD1306_LCDHEIGHT     64
+#define F_MIN     88UL        /* in MHz */    
+#define F_MAX     108UL
+#define STEP_SIZE 0.1         /* in MHz */
+#define FREQ_MODE 0
+#define CHAN_MODE 1
+#define MAGIC_NO  96          /* For EEPROM Detection */
+#define MAGIC_ADD 0           /* EEPROM ADDRESS */
+#define MODE_ADD  1
+#define CHAN_FREQ_BASE 2
+#define NO_CHANNELS 10 + 1    /* Channels + VFO */
+#define ERROR_PRESS 0
+#define SHORT_PRESS 1
+#define MEDIUM_PRESS 2
+#define TRUE        1
+#define FALSE       0
+#define S_PRESS_TIME 500      /* in milli seconds */
+#define M_PRESS_TIME 1500
+#define DLY_SEC      1000     /* Display Hold for Info*/
+#define TZ_HR        5        /* +5.30 INDIAN Time Zone */
+#define TZ_MIN       30  
+#define TIME_ZONE    (TZ_HR * 60 * 60) + (TZ_MIN * 60)
+#define OLED_RESET   4
+#define SSD1306_LCDHEIGHT 64
 
 /* PIN Definition */
-#define ENCODER_A             12                      
-#define ENCODER_B             13                      
-#define ENCODER_BTN           14  
+#define ENCODER_A    12                      
+#define ENCODER_B    13                      
+#define ENCODER_BTN  14  
 
 /* Define Macros */
-#define WriteMode()           do {                                \
-                                EEPROM.begin(512);                \
-                                EEPROM.write(MODE_ADD, Mode);     \
-                                EEPROM.commit();                  \
-                                EEPROM.end();                     \
-                              } while(0)                                 
-#define ReadEncoder()         (myEnc.read() / 4)
-#define FreqToPll(x)          ((4 * ((x * 1000000) + 225000)) / 32768)   /*According To Datasheet */
+#define WriteMode() do {          \
+EEPROM.begin(512);                    
+EEPROM.write(MODE_ADD, Mode);     \
+EEPROM.commit();                  \
+EEPROM.end();                     \
+} while(0)                                 
+#define ReadEncoder() (myEnc.read() / 4)
+#define FreqToPll(x)  ((4 * ((x * 1000000) + 225000)) / 32768)   /*According To Datasheet */
 
 /* Default FM Radio Station Frequencies */
-float Channels[]          = {104.0, 91.1, 91.9, 92.7, 93.5, 94.3, 95.0, 98.3, 101.3, 102.9, 104.0};     
-char ModeFreChlStr[]      = {'F','0','1','2','3','4','5','6','7','8','9'};
+float Channels[] = {104.0, 91.1, 91.9, 92.7, 93.5, 94.3, 95.0, 98.3, 101.3, 102.9, 104.0};     
+char ModeFreChlStr[] = {'F','0','1','2','3','4','5','6','7','8','9'};
                               
 /* Global Variables */
-volatile float            RxDispFreq;
-volatile uint8_t          Mode;            /* Frequency Or Channel Mode */
-volatile uint8_t          ChanNo;
+volatile float   RxDispFreq;
+volatile uint8_t Mode; /* Frequency Or Channel Mode */
+volatile uint8_t ChanNo;
 
-boolean FreqChng          = FALSE;
-boolean ChnChng           = FALSE;
-boolean StrChn            = FALSE;
-boolean StrChnChng        = FALSE;
+boolean FreqChng = FALSE;
+boolean ChnChng  = FALSE;
+boolean StrChn   = FALSE;
+boolean StrChnChng = FALSE;
 
 long newPosition;
 long oldPosition;
 
-const char* ssid          = "WIFI SSID";          /* Your Router's SSID */
-const char* password      = "WIFI PASSWORD";     /* Your Router's WiFi Password */
+const char* ssid  = "WIFI SSID";       
+const char* password = "WIFI PASSWORD";   
 
 int seconds;
 int minutes;
 int hours;
 unsigned long timeNow;
-unsigned long OldTime     = 0;
+unsigned long OldTime = 0;
 
 char line[80];
 unsigned long epoch;
-unsigned int localPort    = 2390;              /* local port to listen for UDP packets */
+unsigned int localPort = 2390; /* local port to listen for UDP packets */
 
-IPAddress timeServerIP;                       /* time.nist.gov NTP server address */
-const char* ntpServerName   = "time.nist.gov";
-const int NTP_PACKET_SIZE   = 48;             /* NTP time stamp is in the first 48 bytes */
-byte packetBuffer[NTP_PACKET_SIZE];           /* buffer to hold incoming & outgoing packets */
+IPAddress timeServerIP; /* time.nist.gov NTP server address */
+const char* ntpServerName = "time.nist.gov";
+const int NTP_PACKET_SIZE = 48; /* NTP time stamp is in the first 48 bytes */
+byte packetBuffer[NTP_PACKET_SIZE]; /* buffer to hold incoming & outgoing packets */
 
-WiFiUDP udp;                                  /* A UDP instance for send & receive packets */
+WiFiUDP udp; /* A UDP instance for send & receive packets */
 Encoder myEnc(ENCODER_A, ENCODER_B);
 Adafruit_SSD1306 display(OLED_RESET);
 
 #if (SSD1306_LCDHEIGHT != 64)
-  #error("Height incorrect, please fix Adafruit_SSD1306.h!");
+#error("Height incorrect, please fix Adafruit_SSD1306.h!");
 #endif
 
 void setup()   {         
-  Wire.begin(0,2);                            /* I2C OLED SDA, SCL */
+  Wire.begin(4,5); /* I2C OLED SDA, SCL */
   Serial.begin(9600);
   ReadEEPROM();
   SetClk();
   pinMode(ENCODER_BTN, INPUT_PULLUP);
-  display.begin(SSD1306_SWITCHCAPVCC, 0x3c);  /* Initialize OLED */
+  display.begin(SSD1306_SWITCHCAPVCC, 0x3c); /* Initialize OLED */
   display.display();
   delay(250);
   ConnectAP();
